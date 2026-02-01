@@ -31,17 +31,28 @@
             // The "DRY" Sidebar Trick - Fixed logic
             async function loadSidebar() {
                 try {
-                    // Removed leading slash
                     const response = await fetch('global/sidebar.html');
-                    // REMOVED .json() call as it was causing a crash
                     const text = await response.text();
-                    document.getElementById('shared-sidebar').innerHTML = text;
+                    const sidebarUl = document.getElementById('shared-sidebar');
+                    sidebarUl.innerHTML = text;
+
+                    // NEW LOGIC: Look at the URL and highlight the matching link
+                    const params = new URLSearchParams(window.location.search);
+                    const currentCat = params.get('category'); // e.g., 'noun'
+        
+                    if (currentCat) {
+                        const activeLink = sidebarUl.querySelector(`[data-nav="${currentCat}"]`);
+                        if (activeLink) activeLink.classList.add('active');
+                    }
                 } catch (error) {
-                    console.error("Sidebar Handshake Failed:", error);
-                }
+                  console.error("Sidebar Logic Failed:", error);
+               }
             }
             loadSidebar();
         </script>
+
+
+
 
         <main class="content">
             <section class="welcome-card">

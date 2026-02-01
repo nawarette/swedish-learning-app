@@ -3,10 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Svenska Hub - Practice</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/x-icon" href="favicon/favicon.ico">
+    <title>Svenska Övning - Master Portal</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link rel="stylesheet" href="/global/style/style.css?v=1">
+    
+    <link rel="icon" type="image/x-icon" href="/global/style/favicon/favicon.ico">
 </head>
+
 <body>
 
     <header class="main-header">
@@ -18,16 +24,19 @@
 
     <div class="layout">
         <nav class="sidebar">
-            <ul>
-                <li><a href="index.html" class="active">Hem</a></li>
-                <li class="section-title">Grammatik</li>
-                <li><a href="grammar/verb/verb_conjugation.html">Verb</a></li>
-                <li><a href="grammar/pronoun/pronomen.html">Pronomen</a></li>
-                <li><a href="grammar/noun/substantiv.html">Substantiv</a></li>
-                <li><a href="grammar/adj/adjektiv.html"><s>Adjektiv</s></a></li>
-                <li><a href="grammar/adv/adverb.html"><s>Adverb</s></a></li>
+            <ul id="shared-sidebar">
             </ul>
         </nav>
+
+        <script>
+            // The "DRY" Sidebar Trick
+            async function loadSidebar() {
+                const response = await fetch('/global/sidebar.html');
+                const html = await response.json(); // Fetching the fragment
+                document.getElementById('shared-sidebar').innerHTML = await response.text();
+                }
+            loadSidebar();
+        </script>
 
         <main class="content">
             <section class="welcome-card">

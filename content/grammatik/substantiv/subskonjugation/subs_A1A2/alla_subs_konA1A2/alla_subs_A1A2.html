@@ -1,4 +1,4 @@
-<!-- file:///Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/substantiv/subskonjugation/subs_A1A2/alla_subs_konA1A2/alla_subs_konA1A2.html -->
+<!-- file:///nedine_gv/Documents/AI_Workshop/AI_Agents/AI_Coaching/swedish_webapp/content/grammatik/substantiv/subskonjugation/subs_A1A2/alla_subs_konA1A2/alla_subs_konA1A2.html -->
 
 <!DOCTYPE html>
 <html lang="sv">
@@ -11,15 +11,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/global/style/style.css?v=1">
-    <link rel="icon" type="image/x-icon" href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/global/style/favicon/favicon.ico">
+    <link rel="stylesheet" href="/global/style/style.css?v=1">
+    <link rel="icon" type="image/x-icon" href="/global/style/favicon/favicon.ico">
 </head>
 
 <body>
 
     <header class="main-header">
         <h1>
-            <img src="/Users/bentoblitzz/Documents/Playground/svenska_ovning/global/style/images/NK_Avatar.png" alt="Nedinique" class="header-logo">
+            <img src="/global/style/images/NK_Avatar.png" alt="Nedinique" class="header-logo">
             Grammatik | Substantiv 🇸🇪
         </h1>
     </header>
@@ -29,14 +29,14 @@
             <ul>
                 <li><a href="/index.html">Hem</a></li>
                 <li class="section-title">Grammatik</li>
-                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/substantiv/subskonjugation/subs_A1A2/subs_konA1A2.html" class="active">Substantiv</a></li>
-                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/pronomen/pronomen.html">Pronomen</a></li>
-                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/verb/verbkonjugation.html">Verb</a></li>
-                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/adjektiv/adjektiv.html">Adjektiv</a></li>
-                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/adverb/adverb.html"><s>Adverb</s></a></li>
-                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/adverb/adverb.html"><s>Preposition</s></a></li>
-                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/konjunktion/konjunktion.html"><s>Konjunktion</s></a></li>
-                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/nummer_tid_mm/num_ordinaltal/num_ordinaltal.html">Nummer/Tid/m.m.</a></li>
+                <li><a href="#" class="active">Substantiv</a></li>
+                <li><a href="/content/en/grammatik/pronomen/pronomen.html">Pronomen</a></li>
+                <li><a href="/content/en/grammatik/verb/verbkonjugation.html">Verb</a></li>
+                <li><a href="/content/en/grammatik/adjektiv/adjektiv.html">Adjektiv</a></li>
+                <li><a href="/content/en/grammatik/adverb/adverb.html"><s>Adverb</s></a></li>
+                <li><a href="/content/en/grammatik/adverb/adverb.html"><s>Preposition</s></a></li>
+                <li><a href="/content/en/grammatik/konjunktion/konjunktion.html"><s>Konjunktion</s></a></li>
+                <li><a href="/content/en/grammatik/nummer_tid_mm/num_ordinaltal/num_ordinaltal.html">Nummer/Tid/m.m.</a></li>
 
                 <li class="section-title"><s>Diktament</s></li>
             </ul>
@@ -63,7 +63,11 @@
                     </div>
                 </div>
 
-                <table class="practice-table">
+                <div id="loading-indicator" style="text-align: center; padding: 20px; font-style: italic; color: #666;">
+                    Hämtar data från molnet... (Fetching cloud data...)
+                </div>
+
+                <table class="practice-table" id="data-table" style="display: none;">
                     <thead>
                         <tr>
                             <th>Artikel</th>
@@ -79,7 +83,7 @@
                     <tbody id="practice-rows"></tbody>
                 </table>
 
-                <div class="controls" style="display: flex; gap: 10px; margin-top: 20px;">
+                <div class="controls" id="pagination-controls" style="display: none; gap: 10px; margin-top: 20px;">
                     <button id="prev-set-btn" onclick="engine.loadPreviousSet()" style="background-color: #6c757d; color: white;">⬅ Föregående 10</button>
                     <button id="next-set-btn" onclick="engine.loadNextSet()">Nästa 10 ord</button>
                 </div>
@@ -87,31 +91,54 @@
         </main>
     </div>
 
-    <script src="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/substantiv/subskonjugation/subs_A1A2/alla_subs_konA1A2/alla_subs_konA1A2_data.js"></script>
-
-    <script src="/Users/bentoblitzz/Documents/Playground/svenska_ovning/global/engine/table_engine.js"></script>
+    <script src="/global/engine/table_engine.js"></script>
 
     <script>
+        // 1. ARCHITECTURE: The Google Sheet URL (Your Master DB)
+        // Replace 'YOUR_DEPLOYED_URL_HERE' with the Web App URL from Google Apps Script
+        const CLOUD_DB_URL = 'https://script.google.com/macros/s/AKfycbxnsysvWRHa2DQXIkVb259-zC6aDVt29iHmBpmZKmppHHbi3k3igwPOY9L4jCF6gwgH/exec';
+        const TARGET_LEVEL = 'A1_A2_ALL'; // This matches the Tab name in your Google Sheet
+
+        // 2. CONFIGURATION: Tells the engine how to map the spreadsheet columns
         const table_Config = {
-            primaryKey: 'singularOb', // Key used for sorting/filtering
+            primaryKey: 'singularOb',
             columns: [
                 { key: 'article',    type: 'input_hint', placeholder: 'en/ett/-' },
                 { key: 'singularOb', type: 'hint' },
                 { key: 'singularBe', type: 'input' },
                 { key: 'pluralOb',   type: 'input' },
                 { key: 'pluralBe',   type: 'input' },
-                { key: 'group',      type: 'group' }, // Special style: align middle
+                { key: 'group',      type: 'group' },
                 { key: null,         type: 'control' },
-                { key: 'translation',type: 'translation' } // Special style: align left
+                { key: 'translation',type: 'translation' }
             ]
         };
 
-        // Trigger engine with the specific data and map
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof alla_subs_A1A2_Data !== 'undefined') {
-                engine.init(alla_subs_A1A2_Data, table_Config);
+        // 3. THE HANDSHAKE: Fetch data from Google Sheets instead of a local file
+        async function initCloudApp() {
+            try {
+                // We add the level as a parameter so the Apps Script knows which tab to read
+                const response = await fetch(`${CLOUD_DB_URL}?level=${TARGET_LEVEL}`);
+                const data = await response.json();
+
+                if (data && data.length > 0) {
+                    // Hide loading, show table
+                    document.getElementById('loading-indicator').style.display = 'none';
+                    document.getElementById('data-table').style.display = 'table';
+                    document.getElementById('pagination-controls').style.display = 'flex';
+
+                    // Initialize your existing engine with the cloud data
+                    engine.init(data, table_Config);
+                }
+            } catch (error) {
+                document.getElementById('loading-indicator').innerHTML = 
+                    `<span style="color: red;">Ett fel uppstod: ${error.message}. Kontrollera din anslutning.</span>`;
+                console.error("Cloud Handshake Error:", error);
             }
-        });
+        }
+
+        // Trigger on load
+        document.addEventListener('DOMContentLoaded', initCloudApp);
     </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-/* file:///Users/bentoblitzz/Documents/Playground/svenska_ovning/global/engine/cloze_engine.js 
+/* file:///nedine_gv/Documents/AI_Workshop/AI_Agents/AI_Coaching/swedish_webapp/global/engine/cloze_engine.js 
    
    UNIVERSAL CLOZE ENGINE (Fill-in-the-blank)
    Updated: Dynamic button toggle and layout fixes.

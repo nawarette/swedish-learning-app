@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Svenska Övning - Master Portal</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link rel="stylesheet" href="/global/style/style.css?v=1">
+    
+    <link rel="icon" type="image/x-icon" href="/global/style/favicon/favicon.ico">
+</head>
+
+<body>
+    <header class="main-header">
+        <h1>
+            <img src="/global/style/images/NK_Avatar.png" alt="Logo" class="header-logo">
+            Grammatik Portal 🇸🇪
+        </h1>
+    </header>
+
+    <div class="layout">
+        <nav class="sidebar">
+            <ul id="shared-sidebar">
+            </ul>
+        </nav>
+
+        <script>
+            // The "DRY" Sidebar Trick
+            async function loadSidebar() {
+                const response = await fetch('/global/sidebar.html');
+                const html = await response.json(); // Fetching the fragment
+                document.getElementById('shared-sidebar').innerHTML = await response.text();
+                }
+            loadSidebar();
+        </script>
+
+        <main class="content">
+            <section class="practice-area">
+                <div class="section-header">
+                    <h2 id="dynamic-title">Laddar övning...</h2>
+                    <a href="javascript:void(0);" onclick="history.back()" class="back-btn">⬅ Tillbaka</a>
+                </div>
+
+                <div id="loading-indicator" style="text-align: center; padding: 50px;">
+                    Söker i Google Sheets...
+                </div>
+
+                <div id="table-view" style="display: none;">
+                    <div class="top-controls">
+                        <div class="left-actions">
+                            <button id="restart-btn" onclick="engine.clearAll()">🔄 Slumpa om</button>
+                            <div class="filter-controls">
+                                <button id="save-filter-btn" onclick="engine.saveSelection()" style="display:none;">Spara</button>
+                                <button id="cancel-filter-btn" onclick="location.reload()" style="display:none;">Avbryt</button>
+                            </div>
+                        </div>
+                        <div class="right-actions">
+                            <button id="filter-btn" onclick="engine.enterSelectionMode()">⚙️ Setting</button>
+                        </div>
+                    </div>
+                    
+                    <table class="practice-table">
+                        <thead>
+                            <tr id="table-headers">
+                                </tr>
+                        </thead>
+                        <tbody id="practice-rows"></tbody>
+                    </table>
+                </div>
+
+                <div id="cloze-view" style="display: none;">
+                    <div class="top-controls">
+                        <div class="left-actions">
+                            <button onclick="clozeEngine.clearAll()">🔄 Slumpa om</button>
+                        </div>
+                        <div class="right-actions">
+                            <button onclick="clozeEngine.enterSelectionMode()">⚙️ Setting</button>
+                        </div>
+                    </div>
+                    <div id="exercise-container" class="exercise-container"></div>
+                </div>
+
+                <div id="pagination" class="controls" style="display: none; gap: 10px; margin-top: 20px;">
+                    <button id="prev-set-btn">⬅ Föregående</button>
+                    <button id="next-set-btn">Nästa</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/global/engine/table_engine.js"></script>
+    <script src="/global/engine/cloze_engine.js"></script>
+
+    <script>
+        // REPLACE WITH YOUR ACTUAL DEPLOYED GOOGLE APPS SCRIPT URL
+        const CLOUD_DB_URL = 'YOUR_GOOGLE_SCRIPT_URL_HERE';
+
+        // TABLE CONFIGURATION (Determines which columns to show for 'table' type)
+        const table_Config = {
+            primaryKey: 'singularOb',
+            columns: [
+                { key: 'article',    type: 'input_hint', placeholder: 'en/ett/-' },
+                { key: 'singularOb', type: 'hint' },
+                { key: 'singularBe', type: 'input' },
+                { key: 'pluralOb',   type: 'input' },
+                { key: 'pluralBe',   type: 'input' },
+                { key: 'group',      type: 'group' },
+                { key: null,         type: 'control' },
+                { key: 'translation',type: 'translation' }
+            ]
+        };
+
+        async function initMasterApp() {
+            const params = new URLSearchParams(window.location.search);
+            const type     = params.get('type')     || 'table';
+            const category = params.get('category') || 'noun';
+            const level    = params.get('level')    || 'A1';
+            const theme    = params.get('theme')    || 'all';
+
+            const sheetName = `${category}_${level}`;
+            
+            try {
+                const response = await fetch(`${CLOUD_DB_URL}?sheet=${sheetName}`);
+                let data = await response.json();
+
+                // Apply theme filter if not 'all'
+                if (theme !== 'all') {
+                    data = data.filter(item => item.theme === theme);
+                }
+
+                // UI Cleanup
+                document.getElementById('loading-indicator').style.display = 'none';
+                document.getElementById('pagination').style.display = 'flex';
+                document.getElementById('dynamic-title').innerText = `${category.toUpperCase()} | ${theme.replace('_', ' ')}`;
+
+                if (type === 'table') {
+                    document.getElementById('table-view').style.display = 'block';
+                    renderTableHeaders();
+                    engine.init(data, table_Config);
+                } else {
+                    document.getElementById('cloze-view').style.display = 'block';
+                    clozeEngine.init(data);
+                }
+
+            } catch (err) {
+                document.getElementById('loading-indicator').innerHTML = `<span style="color:red">Handshake Failed: ${err.message}</span>`;
+            }
+        }
+
+        function renderTableHeaders() {
+            const headerRow = document.getElementById('table-headers');
+            const labels = ["Artikel", "Singular (Ob)", "Singular (Be)", "Plural (Ob)", "Plural (Be)", "Grupp", "Kontroll", "Översättning"];
+            headerRow.innerHTML = labels.map(l => `<th>${l}</th>`).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', initMasterApp);
+    </script>
+</body>
+</html>

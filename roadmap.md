@@ -1,4 +1,11 @@
 
+// file:///Users/nedine_gv/Documents/AI_Workshop/AI_Agents/AI_Coaching/swedish_webapp/roadmap.md
+
+## NOTES:
+
+* Show/hide .gitignore file = press CRTL+SHIFT+. in finder. 
+* TO open the Cursor UI = in CLI type 'cursor .'    // In terminal language, . always means "the current directory." So, cursor . literally tells the computer: "Open Cursor and load the folder I am currently standing in". //
+
 ---
 
 ## 🇸🇪 Project: Swedish Learning App (Agent-Augmented)
@@ -10,7 +17,7 @@
 * [x] **Install Homebrew** (The Package Manager)
 * [x] **Install GitHub CLI (`gh`)** (The Bridge)
 * [x] **Authenticate GitHub** (`gh auth login`)
-* [ ] **Establish Local Repo** (`git init` inside your project folder)
+* [x] **Establish Local Repo** (`git init` inside your project folder)
 * [ ] **First Push to Cloud** (Connecting local code to GitHub.com)
 
 ### 🏗️ Phase 2: Static Foundation (Path A)

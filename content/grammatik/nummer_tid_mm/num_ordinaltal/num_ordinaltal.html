@@ -1,0 +1,170 @@
+<!-- file:///Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/nummer_tid_mm/num_ordinaltal/num_ordinaltal.html -->
+
+
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grammatikträning - Ordinaltal (A1/A2)</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/global/style/style.css?v=1">
+    <link rel="icon" type="image/x-icon" href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/global/style/favicon/favicon.ico">
+
+    <style>
+        /* Specific styles for Cloze (integrated) exercises */
+        .exercise-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .exercise-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary-blue, #007bff);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .sentence-text {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #333;
+            margin: 0;
+        }
+
+        /* The integrated input field */
+        .cloze-input {
+            border: none;
+            border-bottom: 2px solid #ccc;
+            padding: 2px 5px;
+            font-family: inherit;
+            font-size: inherit;
+            font-weight: bold;
+            color: var(--primary-blue, #007bff);
+            text-align: center;
+            width: 140px; /* Adjusted for longer words like 'trettioförsta' */
+            transition: all 0.3s ease;
+        }
+
+        .cloze-input:focus {
+            outline: none;
+            border-bottom-color: var(--primary-blue, #007bff);
+            background-color: #f0f7ff;
+        }
+
+        .hint-badge {
+            background: #e9ecef;
+            color: #495057;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .card-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .check-btn, .show-btn {
+            padding: 6px 12px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border-radius: 6px;
+            border: none;
+            transition: opacity 0.2s;
+        }
+
+        .check-btn { background-color: #28a745; color: white; }
+        .show-btn { background-color: #ffc107; color: #333; }
+        
+        .check-btn:hover, .show-btn:hover { opacity: 0.8; }
+    </style>
+</head>
+
+<body>
+
+    <header class="main-header">
+        <h1>
+            <img src="/Users/bentoblitzz/Documents/Playground/svenska_ovning/global/style/images/NK_Avatar.png" alt="Nedinique" class="header-logo">
+            Grammatik | Nummer & Tid 🇸🇪
+        </h1>
+    </header>
+
+    <div class="layout">
+        <nav class="sidebar">
+            <ul>
+                <li><a href="/index.html">Hem</a></li>
+                <li class="section-title">Grammatik</li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/substantiv/subskonjugation/subs_A1A2/subs_konA1A2.html">Substantiv</a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/pronomen/pronomen.html">Pronomen</a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/verb/verbkonjugation.html">Verb</a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/adjektiv/adjektiv.html">Adjektiv</a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/adverb/adverb.html"><s>Adverb</s></a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/adverb/adverb.html"><s>Preposition</s></a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/konjunktion/konjunktion.html"><s>Konjunktion</s></a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/nummer_tid_mm/num_ordinaltal/num_ordinaltal.html" class="active">Nummer/Tid/m.m.</a></li>
+                <li class="section-title"><s>Diktament</s></li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <section class="practice-area">
+                <div class="section-header">
+                    <h2>Öva på Ordinaltal (1:a - 31:a) 🔢</h2>
+                    <a href="javascript:void(0);" onclick="history.back()" class="back-btn">⬅ Tillbaka (Back)</a>
+                </div>
+                
+                <div class="top-controls">
+                    <div class="left-actions">
+                        <button id="restart-btn" onclick="clozeEngine.clearAll()">🔄 Starta om / Slumpa</button>
+        
+                        <div class="filter-controls" style="display: inline-block;">
+                            <button id="save-filter-btn" onclick="clozeEngine.saveSelection()" style="display:none; background-color: var(--success-green); color: white;">Spara</button>
+                            <button id="cancel-filter-btn" onclick="location.reload()" style="display:none; background-color: #f8d7da; color: #721c24; margin-left: 5px;">Avbryt</button>
+                        </div>
+                    </div>
+
+                    <div class="right-actions">
+                        <button id="filter-btn" onclick="clozeEngine.enterSelectionMode()" style="background-color: #6c757d; color: white;">⚙️ Setting</button>
+                    </div>
+                </div>
+                
+                <div id="exercise-container" class="exercise-container"></div>
+
+                <div class="controls" style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button id="prev-set-btn" onclick="clozeEngine.loadPreviousSet()" style="background-color: #6c757d; color: white;">⬅ Föregående 10</button>
+                    <button id="next-set-btn" onclick="clozeEngine.loadNextSet()" style="background-color: var(--primary-blue, #007bff); color: white;">Nästa 10 meningar</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/nummer_tid_mm/num_ordinaltal/num_ordinaltal_data.js"></script>
+
+    <script src="/Users/bentoblitzz/Documents/Playground/svenska_ovning/global/engine/cloze_engine.js"></script>
+
+    <script>
+        // Trigger the cloze engine with the ordinal data
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof ordinalExercises !== 'undefined') {
+                clozeEngine.init(ordinalExercises);
+            } else {
+                console.error("Ordinal data not found! Check if ordinaltal_data.js is loaded correctly.");
+            }
+        });
+    </script>
+</body>
+</html>

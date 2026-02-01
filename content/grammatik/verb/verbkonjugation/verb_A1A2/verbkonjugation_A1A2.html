@@ -1,0 +1,121 @@
+<!-- file:///Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/verb/verbkonjugation.html -->
+
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verbkonjugation - A1/A2</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/global/style/style.css?v=1">
+    <link rel="icon" type="image/x-icon" href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/global/style/favicon/favicon.ico">
+</head>
+<body>
+
+    <header class="main-header">
+        <h1>
+            <img src="/Users/bentoblitzz/Documents/Playground/svenska_ovning/global/style/images/NK_Avatar.png" alt="Nedinique" class="header-logo">
+             Grammatik | Verbkonjugation 🏃🏻‍♀️
+        </h1>
+    </header>
+
+    <div class="layout">
+        <nav class="sidebar">
+            <ul>
+                <li><a href="/index.html">Hem</a></li>
+                <li class="section-title">Grammatik</li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/substantiv/subskonjugation/subs_A1A2/subs_konA1A2.html">Substantiv</a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/pronomen/pronomen.html">Pronomen</a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/verb/verbkonjugation.html" class="active">Verb</a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/adjektiv/adjektiv.html">Adjektiv</a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/adverb/adverb.html"><s>Adverb</s></a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/adverb/adverb.html"><s>Preposition</s></a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/konjunktion/konjunktion.html"><s>Konjunktion</s></a></li>
+                <li><a href="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/nummer_tid_mm/num_ordinaltal/num_ordinaltal.html">Nummer/Tid/m.m.</a></li>
+
+                <li class="section-title"><s>Diktament</s></li>
+            </ul>
+        </nav>
+
+        <main class="content">
+            <section class="practice-area">
+                <div class="section-header">
+                    <h2>Öva på Verbkonjugation 🏃🏻‍♀️</h2>
+                    <a href="javascript:void(0);" onclick="history.back()" class="back-btn">⬅ Tillbaka (Back)</a>
+                </div>
+                
+                <div class="top-controls" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div class="left-actions">
+                        <button id="restart-btn" onclick="engine.clearAll()">🔄 Starta om / Slumpa</button>
+                        <div class="filter-controls" style="display: inline-block;">
+                            <button id="save-filter-btn" onclick="engine.saveSelection()" style="display:none; background-color: var(--primary-blue); color: white;">Spara</button>
+                            <button id="cancel-filter-btn" onclick="location.reload()" style="display:none; background-color: #f8d7da; color: #721c24; margin-left: 5px;">Avbryt</button>
+                        </div>
+                    </div>
+
+                    <div class="right-actions">
+                        <button id="filter-btn" onclick="engine.enterSelectionMode()" style="background-color: #6c757d; color: white;">⚙️ Setting</button>
+                    </div>
+                </div>
+
+                <table class="practice-table">
+                    <thead>
+                        <tr>
+                            <th>Imperativ</th>
+                            <th>Infinitiv</th>
+                            <th>Presens</th>
+                            <th>Preteritum</th>
+                            <th>Supinum</th>
+                            <th class="group-col">Grupp</th>
+                            <th>Kontroll</th>
+                            <th>Översättning</th>
+                        </tr>
+                    </thead>
+                    <tbody id="practice-rows"></tbody>
+                </table>
+
+                <div class="controls" style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button id="prev-set-btn" onclick="engine.loadPreviousSet()" style="background-color: #6c757d; color: white;">⬅ Föregående (Back)</button>
+                    <button id="next-set-btn" onclick="engine.loadNextSet()">Nästa ord</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/Users/bentoblitzz/Documents/Playground/svenska_ovning/content/en/grammatik/verb/verbkonjugation/verb_A1A2/verbkonjugation_A1A2_data.js"></script>
+    
+    <script src="/Users/bentoblitzz/Documents/Playground/svenska_ovning/global/engine/table_engine.js"></script>
+
+    <script>
+        const verbConjugationConfig = {
+            primaryKey: 'infinitiv', 
+            columns: [
+                { key: 'imperativ',  type: 'input' },      
+                { key: 'infinitiv',  type: 'hint' },       // The blue target word
+                { key: 'presens',    type: 'input' },     
+                { key: 'preteritum', type: 'input' },     
+                { key: 'supinum',    type: 'input' },     
+                { key: 'group',      type: 'group' },      // Centered style
+                { key: null,         type: 'control' },    // Buttons
+                { key: 'translation',type: 'translation' } // Left aligned style
+            ]
+        };
+
+        function startVerbEngine() {
+            // Checks for 'verbA1A2_Data' which is defined in your data.js
+            if (typeof verbA1A2_Data !== 'undefined') {
+                engine.init(verbA1A2_Data, verbConjugationConfig);
+            } else {
+                setTimeout(startVerbEngine, 100);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', startVerbEngine);
+    </script>
+
+</body>
+</html>

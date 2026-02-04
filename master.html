@@ -13,7 +13,7 @@
     <header class="main-header">
         <h1>
             <a href="index.html" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px;">
-                <img src="global/style/images/NK_Avatar.png" alt="Logo" class="header-logo"> Min svenska övning 🇸🇪
+                <img src="global/style/images/NK_Avatar.png" alt="Logo" class="header-logo"> Grammatik Portal 🇸🇪
             </a>
         </h1>
         <div class="lang-selector-container">
@@ -43,13 +43,14 @@
                     <div class="top-controls">
                         <div class="left-actions">
                             <button id="restart-btn" onclick="engine.clearAll()">🔄 Starta om / Slumpa</button>
-                            <div class="filter-controls">
-                                <button id="save-filter-btn" onclick="engine.saveSelection()" style="display:none;">Spara</button>
-                                <button id="cancel-filter-btn" onclick="location.reload()" style="display:none;">Avbryt</button>
-                            </div>
+                            <div id="selection-tools" style="display:none;"></div>
                         </div>
                         <div class="right-actions">
                             <button id="filter-btn" onclick="engine.enterSelectionMode()">⚙️ Setting</button>
+                            <div class="filter-controls">
+                                <button id="save-filter-btn" onclick="engine.saveSelection()" style="display:none;">Spara</button>
+                                <button id="cancel-filter-btn" onclick="location.reload()" style="display:none; margin-left:5px;">Avbryt</button>
+                            </div>
                         </div>
                     </div>
                     <table class="practice-table">
@@ -105,28 +106,22 @@
             const userLevel = p.get('level')?.toLowerCase(); 
             let cat = p.get('category') || 'other_index';
             
-            // Clean category and identify prefix
             const cleanCat = cat.replace(/(_0_0|_0)$/, ""); 
             const pref = cleanCat.split('_')[0];
 
-            // 1. SMART TYPE DEFAULTING
-            // If we have a level and it's grammar, it MUST be a table view unless overridden
             let type = p.get('type');
             if (!type && userLevel && pref === 'gmmr') type = 'table';
             if (!type) type = 'dashboard';
 
-            // 2. ID ROUTING
             const targetId = (userLevel && _idMap[cleanCat]) ? _idMap[cleanCat] : (_idMap[pref] || _idMap['other']);
             const ACTIVE_DB_URL = `https://script.google.com/macros/s/${targetId}/exec`;
             
-            // 3. TAB NAME BUILDER (Matches gmmr_noun_a1a2_0)
             let sheetName = cleanCat;
             if (pref === 'gmmr' || pref === 'dict') {
                 sheetName = userLevel ? `${cleanCat}_${userLevel}_0` : `${cleanCat}_0_0`;
             }
 
             try {
-                console.log("Fetching:", sheetName, "| Mode:", type);
                 const res = await fetch(`${ACTIVE_DB_URL}?sheet=${sheetName}`);
                 const rawData = await res.json();
                 if (!Array.isArray(rawData)) throw new Error(`Flik ej hittad: ${sheetName}`);
@@ -136,48 +131,62 @@
                 container.innerHTML = '';
                 const lang = localStorage.getItem('userPreferredLang') || 'sv';
 
-                // 4. THEME FILTER
                 let data = rawData.filter(row => {
                     const rowType = row.Type?.toLowerCase().trim();
                     if (rowType === 'row' || rowType === 'data') {
-                        const rowTheme = row['Data 1']?.toLowerCase().trim();
-                        return (userTheme === 'all' || !rowTheme || rowTheme === userTheme);
+                        const rowTheme = row['Data 1']?.toLowerCase().trim() || "";
+                        if (userTheme === 'all') return true;
+                        return (rowTheme === userTheme);
                     }
                     return true; 
                 });
 
                 let dashboardRows = [];
                 let collectingDash = false;
-                let dashConfig = 'grid-smart';
+                let lastDashLogic = 'grid-smart';
 
                 data.forEach(row => {
                     const typeAttr = row.Type ? row.Type.toLowerCase().trim() : '';
+                    
                     if (typeAttr === 'meta') {
                         const key = row['Content/Key'];
-                        // Support both Logic (Col C) or Data 1 (Col D) for Meta values
-                        const metaVal = row['Data 1'] || row.Logic;
-                        if (key === 'pageTitle') document.title = metaVal;
-                        if (key === 'pageHeader') document.getElementById('dynamic-title').innerText = metaVal;
+                        const logicVal = row.Logic ? row.Logic.toString().toLowerCase().trim() : "";
+                        
+                        // --- UPDATED DYNAMIC PAGE HEADER LOGIC (USING #) ---
+                        if (key === 'pageHeader') {
+                            const headerText = row['Data 1'];
+                            
+                            // 1. Priority Match: Theme in Logic column matches userTheme
+                            if (userTheme !== 'all' && logicVal === userTheme) {
+                                document.getElementById('dynamic-title').innerText = headerText;
+                                document.getElementById('dynamic-title').dataset.matched = "true";
+                            } 
+                            // 2. Fallback Match: logicVal is '#' AND no specific match found yet
+                            else if (logicVal === "#" && !document.getElementById('dynamic-title').dataset.matched) {
+                                document.getElementById('dynamic-title').innerText = headerText;
+                            }
+                        }
+
+                        if (key === 'pageTitle') {
+                            document.title = row['Data 1'] || row.Logic;
+                        }
+
                         if (key === 'showBackBtn') {
-                           const show = metaVal?.toString().toUpperCase() === 'TRUE';
+                           const show = (row['Data 1'] || row.Logic)?.toString().toUpperCase() === 'TRUE';
                            document.getElementById('back-button').style.display = show ? 'block' : 'none';
                         }
                         return;
                     }
 
                     if (typeAttr === 'dashboard' || typeAttr === 'dashboard_start') {
-                        collectingDash = true; dashConfig = row.Logic || 'grid-smart'; dashboardRows = []; return;
+                        collectingDash = true; dashboardRows = []; lastDashLogic = row.Logic || 'grid-smart'; return;
                     }
                     if (collectingDash && typeAttr === 'card') {
                         dashboardRows.push(row); return;
                     }
                     if (typeAttr === 'dashboard_end' && collectingDash) {
                         collectingDash = false;
-                        const dId = `dash-${Math.random().toString(36).substr(2, 9)}`;
-                        const dDiv = document.createElement('div'); dDiv.id = dId;
-                        container.appendChild(dDiv);
-                        dashboardEngine.init(dId, dashboardRows, dashConfig);
-                        return;
+                        renderDash(); return;
                     }
 
                     if (typeAttr === 'text') {
@@ -190,18 +199,23 @@
                     }
                 });
 
-                // 5. ENGINE DISPATCHER
+                if (collectingDash && dashboardRows.length > 0) renderDash();
+
+                function renderDash() {
+                    const dId = `dash-${Math.random().toString(36).substr(2, 9)}`;
+                    const dDiv = document.createElement('div'); dDiv.id = dId;
+                    container.appendChild(dDiv);
+                    dashboardEngine.init(dId, dashboardRows, lastDashLogic);
+                }
+
                 const exercises = data.filter(i => i.Type?.toLowerCase() === 'row' || i.Type?.toLowerCase() === 'data');
                 if (exercises.length > 0) {
                     document.getElementById('pagination').style.display = 'flex';
                     if (type === 'table') { 
                         document.getElementById('table-view').style.display = 'block'; 
-                        document.getElementById('cloze-view').style.display = 'none';
                         renderTableHeaders(); engine.init(exercises, table_Config); 
                     } else { 
-                        document.getElementById('table-view').style.display = 'none';
-                        document.getElementById('cloze-view').style.display = 'block'; 
-                        clozeEngine.init(exercises); 
+                        document.getElementById('cloze-view').style.display = 'block'; clozeEngine.init(exercises); 
                     }
                 }
             } catch (err) { document.getElementById('loading-indicator').innerHTML = `<span style="color:red">Error: ${err.message}</span>`; }

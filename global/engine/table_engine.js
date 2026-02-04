@@ -14,7 +14,6 @@ const engine = {
         this.config = config;
         this.storageKey = 'filter_' + window.location.pathname;
         
-        // ARCHITECTURE: Filter out non-vocabulary rows
         const vocabularyOnly = fullDataArray.filter(item => 
             item.Type?.toLowerCase() === 'row' || item.Type?.toLowerCase() === 'data'
         );
@@ -42,7 +41,6 @@ const engine = {
         if (!tableBody) return;
         tableBody.innerHTML = '';
 
-        // Hide headers in Selection Mode for a cleaner list view
         if (tableHead) {
             tableHead.style.display = this.selectionMode ? 'none' : '';
         }
@@ -54,15 +52,13 @@ const engine = {
 
         if (this.selectionMode) {
             itemsToRender = [...this.data];
-            // --- ROBUST SORTING LOGIC ---
+            // --- STABLE SORTING ---
             itemsToRender.sort((a, b) => {
                 if (this.sortMode === 'group') {
-                    // Numeric comparison for Group (Data 7)
                     const valA = String(a['Data 7'] || '99');
                     const valB = String(b['Data 7'] || '99');
                     return valA.localeCompare(valB, 'sv', { numeric: true });
                 } else {
-                    // Alphabetical comparison for Singular (Data 3)
                     const valA = String(a[this.config.primaryKey] || '');
                     const valB = String(b[this.config.primaryKey] || '');
                     return valA.localeCompare(valB, 'sv');
@@ -78,7 +74,6 @@ const engine = {
         itemsToRender.forEach((item) => {
             const pKey = this.config.primaryKey;
             
-            // Render Dynamic Headers
             if (this.selectionMode) {
                 let currentHeader = "";
                 if (this.sortMode === 'group') {
@@ -100,7 +95,6 @@ const engine = {
             let transKey = (userLang === 'th') ? 'Data 9' : 'Data 8'; 
 
             if (this.selectionMode) {
-                // SELECTION MODE ROW
                 const checkbox = `<td style="text-align: center;"><input type="checkbox" ${item.selected ? 'checked' : ''} onchange="engine.toggleWordSelection('${item[pKey]}')"></td>`;
                 const word = `<td class="target-word">${item[pKey]}</td>`;
                 const group = `<td class="group-col">${item['Data 7'] || ''}</td>`;
@@ -108,7 +102,6 @@ const engine = {
                 const trans = `<td style="text-align: left;">${item[transKey] || item['Data 8']}</td>`;
                 rowHtml = checkbox + word + group + spacer + trans;
             } else {
-                // PRACTICE MODE ROW
                 rowHtml += `<td><input type="text" placeholder="en/ett/-" data-answer="${item['Data 2']}" class="answer-input"></td>`;
                 rowHtml += `<td class="target-word">${item['Data 3']}</td>`;
                 rowHtml += `<td><input type="text" data-answer="${item['Data 4']}" class="answer-input"></td>`;
@@ -130,7 +123,7 @@ const engine = {
     toggleWordSelection: function(primaryValue) {
         const item = this.data.find(d => d[this.config.primaryKey] === primaryValue);
         if (item) item.selected = !item.selected;
-        // Do not re-render full table here to prevent focus loss during mass clicking
+        this.updateSelectionTools(); // Update button text immediately
     },
 
     toggleSelectAll: function() {
@@ -141,6 +134,7 @@ const engine = {
 
     toggleSortMode: function() {
         this.sortMode = (this.sortMode === 'alphabet') ? 'group' : 'alphabet';
+        console.log("Sort Mode toggled to:", this.sortMode);
         this.renderTable();
     },
 
@@ -151,26 +145,21 @@ const engine = {
         document.getElementById('filter-btn').style.display = 'none';
         document.getElementById('restart-btn').style.display = 'none';
 
-        // 1. LEFT SIDE: Tools
+        // Fix: Always overwrite tools innerHTML to ensure buttons exist
         let tools = document.getElementById('selection-tools');
-        if (!tools) {
-            tools = document.createElement('div');
-            tools.id = 'selection-tools';
-            tools.className = 'selection-tools-container';
+        if (tools) {
+            tools.style.display = 'flex';
             tools.innerHTML = `
                 <button id="select-all-btn" onclick="engine.toggleSelectAll()" style="margin-right: 5px;">Välj alla</button>
-                <button id="toggle-sort-btn" onclick="engine.toggleSortMode()" style="background-color: var(--swedish-yellow); color: black;">Sortera efter Grupp 1-5</button>
+                <button id="toggle-sort-btn" onclick="engine.toggleSortMode()" style="background-color: var(--swedish-yellow); color: black;">Sortera efter Grupp (1-5)</button>
             `;
-            document.querySelector('.left-actions').appendChild(tools);
-        } else {
-            tools.style.display = 'flex';
         }
 
-        // 2. RIGHT SIDE: Actions
-        const rightContainer = document.querySelector('.right-actions');
+        // Fix: Move Action buttons to the right
+        const rightActions = document.querySelector('.right-actions');
         const filterControls = document.querySelector('.filter-controls');
-        if (filterControls && rightContainer) {
-            rightContainer.appendChild(filterControls); 
+        if (filterControls && rightActions) {
+            rightActions.appendChild(filterControls); 
             document.getElementById('save-filter-btn').style.display = 'inline-block';
             document.getElementById('cancel-filter-btn').style.display = 'inline-block';
         }

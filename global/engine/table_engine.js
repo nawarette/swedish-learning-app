@@ -7,6 +7,7 @@ const engine = {
     selectionMode: false,
     activeDataLength: 0,
     showGroup: true,
+    sortMode: 'alphabet', // 'alphabet' or 'group'
     config: {},
 
     init: function(fullDataArray, config) {
@@ -15,11 +16,11 @@ const engine = {
         
         // ARCHITECTURE: Filter out non-vocabulary rows
         const vocabularyOnly = fullDataArray.filter(item => 
-            item.Type === 'row' || item.Type === 'data'
+            item.Type?.toLowerCase() === 'row' || item.Type?.toLowerCase() === 'data'
         );
 
         const savedSelections = JSON.parse(localStorage.getItem(this.storageKey)) || [];
-        const pKey = this.config.primaryKey;
+        const pKey = this.config.primaryKey; 
 
         this.data = vocabularyOnly.map(item => {
             const isWordInSavedList = savedSelections.includes(item[pKey]);
@@ -41,119 +42,189 @@ const engine = {
         if (!tableBody) return;
         tableBody.innerHTML = '';
 
+        // Hide headers in Selection Mode for a cleaner list view
         if (tableHead) {
             tableHead.style.display = this.selectionMode ? 'none' : '';
         }
 
-        // --- LANGUAGE STATE CHECK ---
-        // Principle: Determine base language for translation column
         const userLang = localStorage.getItem('userPreferredLang') || 'sv';
-        
         let itemsToRender = [];
-        let lastLetter = ""; 
-        const totalCols = this.config.columns.length;
+        let lastHeader = ""; 
+        const totalCols = 8; 
 
         if (this.selectionMode) {
-            itemsToRender = this.data;
+            itemsToRender = [...this.data];
+            // --- ROBUST SORTING LOGIC ---
+            itemsToRender.sort((a, b) => {
+                if (this.sortMode === 'group') {
+                    // Numeric comparison for Group (Data 7)
+                    const valA = String(a['Data 7'] || '99');
+                    const valB = String(b['Data 7'] || '99');
+                    return valA.localeCompare(valB, 'sv', { numeric: true });
+                } else {
+                    // Alphabetical comparison for Singular (Data 3)
+                    const valA = String(a[this.config.primaryKey] || '');
+                    const valB = String(b[this.config.primaryKey] || '');
+                    return valA.localeCompare(valB, 'sv');
+                }
+            });
         } else {
             const filteredData = this.data.filter(item => item.selected);
             this.activeDataLength = filteredData.length;
-
-            if (this.currentIndex >= this.activeDataLength) {
-                this.currentIndex = 0;
-            }
-
+            if (this.currentIndex >= this.activeDataLength) this.currentIndex = 0;
             itemsToRender = filteredData.slice(this.currentIndex, this.currentIndex + this.itemsPerPage);
         }
         
-        itemsToRender.forEach((item, index) => {
+        itemsToRender.forEach((item) => {
             const pKey = this.config.primaryKey;
             
+            // Render Dynamic Headers
             if (this.selectionMode) {
-                const wordToCompare = item[pKey] || "";
-                const currentLetter = wordToCompare.charAt(0).toUpperCase();
-                if (currentLetter !== lastLetter) {
+                let currentHeader = "";
+                if (this.sortMode === 'group') {
+                    currentHeader = "Grupp " + (item['Data 7'] || "Odefinierad");
+                } else {
+                    currentHeader = (item[pKey] || " ").charAt(0).toUpperCase();
+                }
+
+                if (currentHeader !== lastHeader) {
                     const headerRow = document.createElement('tr');
-                    headerRow.innerHTML = `<td colspan="${totalCols}" class="alphabet-header">${currentLetter}</td>`;
+                    headerRow.innerHTML = `<td colspan="${totalCols}" class="alphabet-header">${currentHeader}</td>`;
                     tableBody.appendChild(headerRow);
-                    lastLetter = currentLetter;
+                    lastHeader = currentHeader;
                 }
             }
 
             const tr = document.createElement('tr');
             let rowHtml = '';
-
-            // Map Column Logic based on user choice
-            // Data 1 = SV, Data 2 = EN, Data 3 = TH
-            let transKey = 'Data 1'; 
-            if (userLang === 'en') transKey = 'Data 2';
-            if (userLang === 'th') transKey = 'Data 3';
+            let transKey = (userLang === 'th') ? 'Data 9' : 'Data 8'; 
 
             if (this.selectionMode) {
-                const checkboxCell = `<td style="text-align: center;"><input type="checkbox" ${item.selected ? 'checked' : ''} onchange="engine.toggleWordSelection(${index})"></td>`;
-                const hintCell = `<td class="target-word">${item[pKey]}</td>`;
-                
-                const groupColConfig = this.config.columns.find(col => col.type === 'group');
-                let groupCell = "";
-                let baseColUsed = 3; 
-
-                if (groupColConfig) {
-                    groupCell = `<td class="group-col" style="text-align: center; font-style: italic; color: #888;">${item[groupColConfig.key] || ''}</td>`;
-                    baseColUsed += 1;
-                }
-
-                const spacerColspan = totalCols - baseColUsed; 
-                const spacerCell = `<td colspan="${spacerColspan}" style="color: #999; font-style: italic; text-align: center;">--- Selection Mode ---</td>`;
-                
-                // Show specific translation in Selection Mode
-                const translationCell = `<td style="text-align: left;">${item[transKey] || item['Data 1']}</td>`;
-                
-                rowHtml = checkboxCell + hintCell + groupCell + spacerCell + translationCell;
+                // SELECTION MODE ROW
+                const checkbox = `<td style="text-align: center;"><input type="checkbox" ${item.selected ? 'checked' : ''} onchange="engine.toggleWordSelection('${item[pKey]}')"></td>`;
+                const word = `<td class="target-word">${item[pKey]}</td>`;
+                const group = `<td class="group-col">${item['Data 7'] || ''}</td>`;
+                const spacer = `<td colspan="4" style="color: #999; font-style: italic; text-align: center;">--- Selection Mode ---</td>`;
+                const trans = `<td style="text-align: left;">${item[transKey] || item['Data 8']}</td>`;
+                rowHtml = checkbox + word + group + spacer + trans;
             } else {
-                this.config.columns.forEach(col => {
-                    if (!col.key && col.type !== 'control') return;
-                    
-                    const cellValue = item[col.key] || "";
-
-                    switch(col.type) {
-                        case 'input_hint':
-                            rowHtml += `<td><input type="text" placeholder="${col.placeholder}" data-answer="${cellValue}" class="answer-input"></td>`;
-                            break;
-                        case 'hint':
-                            rowHtml += `<td class="target-word">${cellValue}</td>`;
-                            break;
-                        case 'input':
-                            rowHtml += `<td><input type="text" data-answer="${cellValue}" class="answer-input"></td>`;
-                            break;
-                        case 'group':
-                            rowHtml += `<td class="group-col" style="text-align: center; font-style: italic; color: #888;">${cellValue}</td>`;
-                            break;
-                        case 'control':
-                            rowHtml += `<td class="kontroll-col"><div style="display: flex; gap: 5px; justify-content: center;"><button class="row-check-btn" onclick="engine.checkRow(this)">OK</button><button class="row-show-btn" onclick="engine.showRow(this)">Visa</button></div></td>`;
-                            break;
-                        case 'translation':
-                            // Principle: Translation is language-aware
-                            const transValue = item[transKey] || item['Data 1'];
-                            rowHtml += `<td style="text-align: left;"><span class="translation-text">${transValue}</span></td>`;
-                            break;
-                    }
-                });
+                // PRACTICE MODE ROW
+                rowHtml += `<td><input type="text" placeholder="en/ett/-" data-answer="${item['Data 2']}" class="answer-input"></td>`;
+                rowHtml += `<td class="target-word">${item['Data 3']}</td>`;
+                rowHtml += `<td><input type="text" data-answer="${item['Data 4']}" class="answer-input"></td>`;
+                rowHtml += `<td><input type="text" data-answer="${item['Data 5']}" class="answer-input"></td>`;
+                rowHtml += `<td><input type="text" data-answer="${item['Data 6']}" class="answer-input"></td>`;
+                rowHtml += `<td class="group-col">${item['Data 7'] || ''}</td>`;
+                rowHtml += `<td class="kontroll-col"><div style="display: flex; gap: 5px;"><button class="row-check-btn" onclick="engine.checkRow(this)">OK</button><button class="row-show-btn" onclick="engine.showRow(this)">Visa</button></div></td>`;
+                rowHtml += `<td style="text-align: left;"><span class="translation-text">${item[transKey] || item['Data 8']}</span></td>`;
             }
             
             tr.innerHTML = rowHtml;
             tableBody.appendChild(tr);
-
-            const inputs = tr.querySelectorAll('.answer-input');
-            inputs.forEach(input => {
-                input.addEventListener('keypress', (e) => { if (e.key === 'Enter') engine.checkRow(input); });
-            });
         });
 
-        const groupCells = document.querySelectorAll('.group-col');
-        groupCells.forEach(cell => cell.style.display = this.showGroup ? '' : 'none');
-
-        if (this.selectionMode) this.updateSelectionTools();
+        this.updateSelectionTools(); 
         this.updateUI();
+    },
+
+    toggleWordSelection: function(primaryValue) {
+        const item = this.data.find(d => d[this.config.primaryKey] === primaryValue);
+        if (item) item.selected = !item.selected;
+        // Do not re-render full table here to prevent focus loss during mass clicking
+    },
+
+    toggleSelectAll: function() {
+        const areAllSelected = this.data.every(item => item.selected);
+        this.data.forEach(item => item.selected = !areAllSelected);
+        this.renderTable();
+    },
+
+    toggleSortMode: function() {
+        this.sortMode = (this.sortMode === 'alphabet') ? 'group' : 'alphabet';
+        this.renderTable();
+    },
+
+    enterSelectionMode: function() {
+        this.selectionMode = true;
+        this.sortMode = 'alphabet'; 
+        
+        document.getElementById('filter-btn').style.display = 'none';
+        document.getElementById('restart-btn').style.display = 'none';
+
+        // 1. LEFT SIDE: Tools
+        let tools = document.getElementById('selection-tools');
+        if (!tools) {
+            tools = document.createElement('div');
+            tools.id = 'selection-tools';
+            tools.className = 'selection-tools-container';
+            tools.innerHTML = `
+                <button id="select-all-btn" onclick="engine.toggleSelectAll()" style="margin-right: 5px;">Välj alla</button>
+                <button id="toggle-sort-btn" onclick="engine.toggleSortMode()" style="background-color: var(--swedish-yellow); color: black;">Sortera efter Grupp 1-5</button>
+            `;
+            document.querySelector('.left-actions').appendChild(tools);
+        } else {
+            tools.style.display = 'flex';
+        }
+
+        // 2. RIGHT SIDE: Actions
+        const rightContainer = document.querySelector('.right-actions');
+        const filterControls = document.querySelector('.filter-controls');
+        if (filterControls && rightContainer) {
+            rightContainer.appendChild(filterControls); 
+            document.getElementById('save-filter-btn').style.display = 'inline-block';
+            document.getElementById('cancel-filter-btn').style.display = 'inline-block';
+        }
+
+        this.renderTable();
+    },
+
+    saveSelection: function() {
+        const selectedNames = this.data.filter(item => item.selected).map(item => item[this.config.primaryKey]);
+        localStorage.setItem(this.storageKey, JSON.stringify(selectedNames));
+        this.selectionMode = false;
+        location.reload(); 
+    },
+
+    updateSelectionTools: function() {
+        const selectAllBtn = document.getElementById('select-all-btn');
+        const sortBtn = document.getElementById('toggle-sort-btn');
+
+        if (selectAllBtn) {
+            const areAllSelected = this.data.every(item => item.selected);
+            selectAllBtn.innerText = areAllSelected ? "Avmarkera alla" : "Välj alla";
+        }
+
+        if (sortBtn) {
+            sortBtn.innerText = (this.sortMode === 'alphabet') 
+                ? "Sortera efter Grupp (1-5)" 
+                : "Sortera A-Ö";
+        }
+    },
+
+    checkRow: function(element) {
+        const row = element.closest('tr');
+        const inputs = row.querySelectorAll('.answer-input');
+        const translation = row.querySelector('.translation-text');
+        
+        inputs.forEach(input => {
+            const val = input.value.trim().toLowerCase();
+            const ans = (input.getAttribute('data-answer') || "").toLowerCase();
+            if (val === "") return;
+            input.style.backgroundColor = (val === ans ? "#d4edda" : "#f8d7da");
+            input.style.color = (val === ans ? "#155724" : "#721c24");
+        });
+        if (translation) translation.classList.add('show-translation');
+    },
+
+    showRow: function(button) {
+        const row = button.closest('tr');
+        row.querySelectorAll('.answer-input').forEach(input => {
+            input.value = input.getAttribute('data-answer');
+            input.style.backgroundColor = "#fff3cd"; 
+            input.style.color = "#856404";
+        });
+        const trans = row.querySelector('.translation-text');
+        if (trans) trans.classList.add('show-translation');
     },
 
     shuffleData: function(array) {
@@ -164,95 +235,8 @@ const engine = {
         return array;
     },
 
-    toggleWordSelection: function(index) {
-        this.data[index].selected = !this.data[index].selected;
-        this.renderTable();
-    },
-
-    toggleSelectAll: function() {
-        const areAllSelected = this.data.every(item => item.selected);
-        const newState = !areAllSelected;
-        this.data.forEach(item => item.selected = newState);
-        this.renderTable();
-    },
-
-    updateSelectionTools: function() {
-        const selectAllBtn = document.getElementById('select-all-btn');
-        if (selectAllBtn) {
-            const areAllSelected = this.data.every(item => item.selected);
-            selectAllBtn.innerText = areAllSelected ? "Avmarkera alla" : "Välj alla";
-        }
-    },
-
-    toggleGroupVisibility: function() {
-        this.showGroup = !this.showGroup;
-        this.renderTable();
-    },
-
-    enterSelectionMode: function() {
-        this.selectionMode = true;
-        const pKey = this.config.primaryKey;
-        this.data.sort((a, b) => {
-            let itemA = a[pKey] || "";
-            let itemB = b[pKey] || "";
-            return itemA.localeCompare(itemB, 'sv');
-        });
-        
-        if(document.getElementById('filter-btn')) document.getElementById('filter-btn').style.display = 'none';
-        if(document.getElementById('restart-btn')) document.getElementById('restart-btn').style.display = 'none';
-        
-        const saveBtn = document.getElementById('save-filter-btn');
-        const cancelBtn = document.getElementById('cancel-filter-btn');
-        const rightActions = document.querySelector('.right-actions');
-        const filterControls = document.querySelector('.filter-controls');
-
-        if(saveBtn) saveBtn.style.display = 'inline-block';
-        if(cancelBtn) cancelBtn.style.display = 'inline-block';
-        
-        if(filterControls && rightActions) {
-            rightActions.appendChild(filterControls);
-        }
-
-        let tools = document.getElementById('selection-tools');
-        if (!tools) {
-            tools = document.createElement('div');
-            tools.id = 'selection-tools';
-            tools.classList.add('selection-tools-container');
-
-            tools.innerHTML = `
-                <button id="select-all-btn" onclick="engine.toggleSelectAll()" style="background-color: #6c757d; color: white; margin-right: 5px;">Välj alla</button>
-                <button onclick="engine.toggleGroupVisibility()" style="background-color: #6c757d; color: white;">Visa/Dölj grupp</button>
-            `;
-            const leftContainer = document.querySelector('.left-actions');
-            if(leftContainer) leftContainer.appendChild(tools);
-        } else { 
-            tools.style.display = 'inline-block'; 
-        }
-        this.renderTable();
-    },
-
-    saveSelection: function() {
-        const pKey = this.config.primaryKey;
-        const selectedNames = this.data.filter(item => item.selected).map(item => item[pKey]);
-        localStorage.setItem(this.storageKey, JSON.stringify(selectedNames));
-
-        this.currentIndex = 0;
-        this.selectionMode = false;
-
-        if(document.getElementById('filter-btn')) document.getElementById('filter-btn').style.display = 'inline-block';
-        if(document.getElementById('restart-btn')) document.getElementById('restart-btn').style.display = 'inline-block';
-        if(document.getElementById('save-filter-btn')) document.getElementById('save-filter-btn').style.display = 'none';
-        if(document.getElementById('cancel-filter-btn')) document.getElementById('cancel-filter-btn').style.display = 'none';
-        
-        const tools = document.getElementById('selection-tools');
-        if (tools) tools.style.display = 'none';
-
-        this.renderTable();
-    },
-
     loadNextSet: function() {
-        const totalActive = this.selectionMode ? this.data.length : this.activeDataLength;
-        if (this.currentIndex + this.itemsPerPage < totalActive) {
+        if (this.currentIndex + this.itemsPerPage < this.activeDataLength) {
             this.currentIndex += this.itemsPerPage;
             this.renderTable();
         }
@@ -267,46 +251,12 @@ const engine = {
 
     updateUI: function() {
         const nextBtn = document.getElementById('next-set-btn');
-        const prevBtn = document.getElementById('prev-set-btn');
-        const totalActive = this.selectionMode ? this.data.length : this.activeDataLength;
-        const end = Math.min(this.currentIndex + this.itemsPerPage, totalActive);
-
+        const total = this.activeDataLength;
+        const end = Math.min(this.currentIndex + this.itemsPerPage, total);
         if (nextBtn) {
-            nextBtn.parentElement.style.display = (this.selectionMode || totalActive === 0) ? "none" : "flex";
-            nextBtn.innerText = `Nästa (${end} / ${totalActive})`;
-            nextBtn.style.opacity = (end >= totalActive) ? "0.5" : "1";
-            nextBtn.style.pointerEvents = (end >= totalActive) ? "none" : "auto";
+            nextBtn.innerText = `Nästa (${end} / ${total})`;
+            nextBtn.style.opacity = (end >= total) ? "0.5" : "1";
         }
-        if (prevBtn) {
-            prevBtn.style.opacity = (this.currentIndex === 0) ? "0.5" : "1";
-            prevBtn.style.pointerEvents = (this.currentIndex === 0) ? "none" : "auto";
-        }
-    },
-
-    checkRow: function(element) {
-        const row = element.closest('tr');
-        const inputs = row.querySelectorAll('.answer-input');
-        const translation = row.querySelector('.translation-text');
-        
-        inputs.forEach(input => {
-            const val = input.value.trim().toLowerCase();
-            const ans = input.getAttribute('data-answer').toLowerCase();
-            input.style.backgroundColor = (val === "") ? "" : (val === ans ? "#d4edda" : "#f8d7da");
-            input.style.color = (val === ans ? "#155724" : "#721c24");
-        });
-        if (translation) translation.classList.add('show-translation');
-    },
-
-    showRow: function(button) {
-        const row = button.closest('tr');
-        const inputs = row.querySelectorAll('.answer-input');
-        const translation = row.querySelector('.translation-text');
-        inputs.forEach(input => {
-            input.value = input.getAttribute('data-answer');
-            input.style.backgroundColor = "#fff3cd"; 
-            input.style.color = "#856404";
-        });
-        if (translation) translation.classList.add('show-translation');
     },
 
     clearAll: function() {

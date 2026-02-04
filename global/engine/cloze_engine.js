@@ -1,8 +1,4 @@
-/* file:///nedine_gv/Documents/AI_Workshop/AI_Agents/AI_Coaching/swedish_webapp/global/engine/cloze_engine.js 
-   
-   UNIVERSAL CLOZE ENGINE (Fill-in-the-blank)
-   Updated: Dynamic button toggle and layout fixes.
-*/
+// global/engine/cloze_engine.js
 
 const clozeEngine = {
     currentIndex: 0,
@@ -12,14 +8,29 @@ const clozeEngine = {
     activeDataLength: 0,
     storageKey: '',
 
-    // 1. Initialize with Data and local storage key
-    init: function(dataArray) {
+    // 1. Initialize with Modular Data
+    init: function(fullDataArray) {
         this.storageKey = 'cloze_filter_' + window.location.pathname;
+        
+        // ARCHITECTURE FIX: Only use rows where Type is 'row' or 'data'
+        const clozeOnly = fullDataArray.filter(item => 
+            item.Type === 'row' || item.Type === 'data'
+        );
+
         const savedSelections = JSON.parse(localStorage.getItem(this.storageKey)) || [];
-        this.data = dataArray.map(item => ({ 
-            ...item, 
-            selected: savedSelections.length > 0 ? savedSelections.includes(item.id) : true 
-        }));
+        
+        this.data = clozeOnly.map((item, index) => {
+            const uniqueId = item['Content/Key'] || `q-${index}`;
+            const isWordInSavedList = savedSelections.includes(uniqueId);
+            const shouldBeSelected = savedSelections.length === 0 ? true : isWordInSavedList;
+
+            return { 
+                ...item, 
+                id: uniqueId,
+                selected: shouldBeSelected 
+            };
+        });
+
         this.data = this.shuffleData([...this.data]);
         this.renderExercises(); 
     },
@@ -38,7 +49,7 @@ const clozeEngine = {
         this.updateUI();
     },
 
-    // 2a. Practice Mode UI
+    // 2a. Practice Mode UI (Multi-language and Dynamic Width)
     renderPracticeUI: function(container) {
         const filteredData = this.data.filter(item => item.selected);
         this.activeDataLength = filteredData.length;
@@ -49,17 +60,38 @@ const clozeEngine = {
             return;
         }
 
+        // Principle: Determine base language for translation/hint
+        // Data 1 = SV, Data 2 = EN, Data 3 = TH
+        const userLang = localStorage.getItem('userPreferredLang') || 'sv';
+        let hintColumn = 'Data 1';
+        if (userLang === 'en') hintColumn = 'Data 2';
+        if (userLang === 'th') hintColumn = 'Data 3';
+
         itemsToRender.forEach((item) => {
             const card = document.createElement('div');
             card.className = 'exercise-card';
-            const sentenceWithInput = item.sentence.replace("___", 
-                `<input type="text" class="cloze-input" autocomplete="off" data-answer="${item.answer}" onkeypress="if(event.key === 'Enter') clozeEngine.checkAnswer(this)">`
+
+            const sentence = item['Content/Key'] || "";
+            const answer = item['Data 1'] || ""; // Data 1 is always the Swedish answer
+            const hint = item[hintColumn] || item['Data 1']; // Fallback to SV if empty
+
+            // DYNAMIC WIDTH LOGIC: Calculate width based on answer length
+            const inputWidth = Math.max(answer.length, 4) * 1.2; 
+
+            const sentenceWithInput = sentence.replace("___", 
+                `<input type="text" 
+                    class="cloze-input" 
+                    style="width: ${inputWidth}ch" 
+                    autocomplete="off" 
+                    data-answer="${answer}" 
+                    placeholder="..."
+                    onkeypress="if(event.key === 'Enter') clozeEngine.checkAnswer(this)">`
             );
 
             card.innerHTML = `
                 <div class="exercise-content">
                     <div class="hint-row">
-                        <span class="hint-badge">Ledtråd: ${item.hint}</span>
+                        <span class="hint-badge">Ledtråd: ${hint}</span>
                     </div>
                     <div class="sentence-row">
                         <p class="sentence-text">${sentenceWithInput}</p>
@@ -79,23 +111,21 @@ const clozeEngine = {
         const listContainer = document.createElement('div');
         listContainer.className = 'selection-list-container';
 
-        const sortedData = [...this.data].sort((a, b) => a.id - b.id);
-
-        sortedData.forEach((item) => {
+        this.data.forEach((item) => {
             const row = document.createElement('div');
             row.className = 'selection-item-row';
+            const sentenceDisplay = (item['Content/Key'] || "").replace("___", "______");
+            const answerDisplay = item['Data 1'] || "";
 
             row.innerHTML = `
                 <div style="display: flex; align-items: flex-start; gap: 15px; width: 100%;">
                     <input type="checkbox" class="selection-checkbox" style="margin-top: 5px; transform: scale(1.2);" 
                         ${item.selected ? 'checked' : ''} 
-                        onchange="clozeEngine.toggleItemSelection(${item.id})">
+                        onchange="clozeEngine.toggleItemSelection('${item.id}')">
                     <div style="flex: 1;">
-                        <div class="hint-row" style="border:none; padding:0; margin-bottom: 5px;">
-                            <span class="hint-badge">Ledtråd: ${item.hint}</span>
-                        </div>
                         <div class="sentence-row" style="padding:0;">
-                            <span style="color: #666; font-size: 0.95rem;">${item.sentence.replace("___", "______")}</span>
+                            <span style="color: #333; font-weight: bold;">${answerDisplay}</span>
+                            <span style="color: #666; font-size: 0.95rem; display: block;">${sentenceDisplay}</span>
                         </div>
                     </div>
                 </div>
@@ -105,41 +135,31 @@ const clozeEngine = {
         container.appendChild(listContainer);
     },
 
-    // 3. Selection Logic (The Dynamic Toggles)
+    // ... (rest of helper functions: toggleItemSelection, toggleSelectAll, enterSelectionMode, etc.)
     toggleItemSelection: function(id) {
         const item = this.data.find(d => d.id === id);
         if (item) item.selected = !item.selected;
-        this.updateSelectionButtons(); // Label updates as you click individual boxes
+        this.updateSelectionButtons();
     },
 
     toggleSelectAll: function() {
         const allSelected = this.data.every(item => item.selected);
-        // If all are selected, we unselect all. Otherwise, we select all.
         const newState = !allSelected;
         this.data.forEach(item => item.selected = newState);
-        
         this.renderExercises();
         this.updateSelectionButtons();
     },
 
     enterSelectionMode: function() {
         this.selectionMode = true;
-        
-        if(document.getElementById('restart-btn')) document.getElementById('restart-btn').style.display = 'none';
-        if(document.getElementById('filter-btn')) document.getElementById('filter-btn').style.display = 'none';
-        
         const saveBtn = document.getElementById('save-filter-btn');
         const cancelBtn = document.getElementById('cancel-filter-btn');
-        const leftActions = document.querySelector('.left-actions');
         const rightActions = document.querySelector('.right-actions');
         const filterControls = document.querySelector('.filter-controls');
 
         if(saveBtn) saveBtn.style.display = 'inline-block';
         if(cancelBtn) cancelBtn.style.display = 'inline-block';
-
-        if(filterControls && rightActions) {
-            rightActions.appendChild(filterControls);
-        }
+        if(filterControls && rightActions) rightActions.appendChild(filterControls);
 
         let tools = document.getElementById('selection-tools');
         if (!tools) {
@@ -148,14 +168,11 @@ const clozeEngine = {
             tools.style.display = 'inline-block';
             tools.style.marginLeft = '10px';
             tools.innerHTML = `<button id="select-all-btn" onclick="clozeEngine.toggleSelectAll()" style="background-color: #6c757d; color: white;">Välj alla</button>`;
-            
-            if(leftActions) leftActions.appendChild(tools);
+            document.querySelector('.left-actions').appendChild(tools);
         } else {
             tools.style.display = 'inline-block';
         }
-        
         this.renderExercises();
-        this.updateSelectionButtons();
     },
 
     saveSelection: function() {
@@ -165,32 +182,23 @@ const clozeEngine = {
         location.reload(); 
     },
 
-    // NERDY NOTE: This keeps the label accurate in real-time
     updateSelectionButtons: function() {
         const btn = document.getElementById('select-all-btn');
         if (btn) {
             const allSelected = this.data.every(item => item.selected);
-            // Label shows 'Avmarkera alla' only if everything is checked
             btn.innerText = allSelected ? "Avmarkera alla" : "Välj alla";
         }
     },
 
-    // 4. Interaction Logic
     checkAnswer: function(element) {
         const card = element.closest('.exercise-card');
         const input = card.querySelector('.cloze-input');
         if (!input) return;
         const userValue = input.value.trim().toLowerCase();
         const correctAnswer = input.getAttribute('data-answer').toLowerCase();
-        if (userValue === "") {
-            input.style.backgroundColor = "";
-        } else if (userValue === correctAnswer) {
-            input.style.backgroundColor = "#d4edda";
-            input.style.color = "#155724";
-        } else {
-            input.style.backgroundColor = "#f8d7da";
-            input.style.color = "#721c24";
-        }
+        
+        input.style.backgroundColor = (userValue === "") ? "" : (userValue === correctAnswer ? "#d4edda" : "#f8d7da");
+        input.style.color = (userValue === correctAnswer ? "#155724" : "#721c24");
     },
 
     showAnswer: function(button) {
@@ -203,7 +211,6 @@ const clozeEngine = {
         }
     },
 
-    // 5. Helpers
     shuffleData: function(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -231,22 +238,13 @@ const clozeEngine = {
     updateUI: function() {
         const nextBtn = document.getElementById('next-set-btn');
         const prevBtn = document.getElementById('prev-set-btn');
-        const nextContainer = nextBtn ? nextBtn.parentElement : null;
-        if (this.selectionMode) {
-            if (nextContainer) nextContainer.style.display = "none";
-        } else {
-            if (nextContainer) nextContainer.style.display = "flex";
-            const total = this.activeDataLength;
-            const end = Math.min(this.currentIndex + this.itemsPerPage, total);
-            if (nextBtn) {
-                nextBtn.innerText = `Nästa (${end} / ${total})`;
-                nextBtn.disabled = (end >= total);
-                nextBtn.style.opacity = (end >= total) ? "0.5" : "1";
-            }
-            if (prevBtn) {
-                prevBtn.disabled = (this.currentIndex === 0);
-                prevBtn.style.opacity = (this.currentIndex === 0) ? "0.5" : "1";
-            }
+        const total = this.activeDataLength;
+        const end = Math.min(this.currentIndex + this.itemsPerPage, total);
+
+        if (nextBtn) {
+            nextBtn.innerText = `Nästa (${end} / ${total})`;
+            nextBtn.style.opacity = (end >= total) ? "0.5" : "1";
+            nextBtn.disabled = (end >= total);
         }
     },
 

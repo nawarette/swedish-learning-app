@@ -1,4 +1,4 @@
-// file:///Users/bentoblitzz/Documents/Playground/svenska_ovning/global/engine/table_engine.js
+// global/engine/table_engine.js
 
 const engine = {
     currentIndex: 0,
@@ -7,17 +7,21 @@ const engine = {
     selectionMode: false,
     activeDataLength: 0,
     showGroup: true,
-    config: {}, // Stores the map defined in the HTML
+    config: {},
 
-    // 1. Initialize with Config
-    init: function(dataArray, config) {
+    init: function(fullDataArray, config) {
         this.config = config;
         this.storageKey = 'filter_' + window.location.pathname;
         
+        // ARCHITECTURE: Filter out non-vocabulary rows
+        const vocabularyOnly = fullDataArray.filter(item => 
+            item.Type === 'row' || item.Type === 'data'
+        );
+
         const savedSelections = JSON.parse(localStorage.getItem(this.storageKey)) || [];
         const pKey = this.config.primaryKey;
 
-        this.data = dataArray.map(item => {
+        this.data = vocabularyOnly.map(item => {
             const isWordInSavedList = savedSelections.includes(item[pKey]);
             const shouldBeSelected = savedSelections.length === 0 ? true : isWordInSavedList;
 
@@ -31,7 +35,6 @@ const engine = {
         this.renderTable(); 
     },
 
-    // 2. Dynamic Render Loop
     renderTable: function() {
         const tableBody = document.getElementById('practice-rows');
         const tableHead = document.querySelector('.practice-table thead');
@@ -42,6 +45,10 @@ const engine = {
             tableHead.style.display = this.selectionMode ? 'none' : '';
         }
 
+        // --- LANGUAGE STATE CHECK ---
+        // Principle: Determine base language for translation column
+        const userLang = localStorage.getItem('userPreferredLang') || 'sv';
+        
         let itemsToRender = [];
         let lastLetter = ""; 
         const totalCols = this.config.columns.length;
@@ -76,15 +83,19 @@ const engine = {
             const tr = document.createElement('tr');
             let rowHtml = '';
 
+            // Map Column Logic based on user choice
+            // Data 1 = SV, Data 2 = EN, Data 3 = TH
+            let transKey = 'Data 1'; 
+            if (userLang === 'en') transKey = 'Data 2';
+            if (userLang === 'th') transKey = 'Data 3';
+
             if (this.selectionMode) {
-                // FIXED: Selection Mode row logic - Now dynamically checks for Group column
                 const checkboxCell = `<td style="text-align: center;"><input type="checkbox" ${item.selected ? 'checked' : ''} onchange="engine.toggleWordSelection(${index})"></td>`;
                 const hintCell = `<td class="target-word">${item[pKey]}</td>`;
                 
-                // NERDY ADVISOR NOTE: Check if a 'group' column exists in the config
                 const groupColConfig = this.config.columns.find(col => col.type === 'group');
                 let groupCell = "";
-                let baseColUsed = 3; // checkbox + primary word + translation
+                let baseColUsed = 3; 
 
                 if (groupColConfig) {
                     groupCell = `<td class="group-col" style="text-align: center; font-style: italic; color: #888;">${item[groupColConfig.key] || ''}</td>`;
@@ -93,30 +104,37 @@ const engine = {
 
                 const spacerColspan = totalCols - baseColUsed; 
                 const spacerCell = `<td colspan="${spacerColspan}" style="color: #999; font-style: italic; text-align: center;">--- Selection Mode ---</td>`;
-                const translationCell = `<td style="text-align: left;">${item.translation || ''}</td>`;
+                
+                // Show specific translation in Selection Mode
+                const translationCell = `<td style="text-align: left;">${item[transKey] || item['Data 1']}</td>`;
                 
                 rowHtml = checkboxCell + hintCell + groupCell + spacerCell + translationCell;
             } else {
-                // Practice Mode Row
                 this.config.columns.forEach(col => {
+                    if (!col.key && col.type !== 'control') return;
+                    
+                    const cellValue = item[col.key] || "";
+
                     switch(col.type) {
                         case 'input_hint':
-                            rowHtml += `<td><input type="text" placeholder="${col.placeholder}" data-answer="${item[col.key]}" class="answer-input"></td>`;
+                            rowHtml += `<td><input type="text" placeholder="${col.placeholder}" data-answer="${cellValue}" class="answer-input"></td>`;
                             break;
                         case 'hint':
-                            rowHtml += `<td class="target-word">${item[col.key]}</td>`;
+                            rowHtml += `<td class="target-word">${cellValue}</td>`;
                             break;
                         case 'input':
-                            rowHtml += `<td><input type="text" data-answer="${item[col.key]}" class="answer-input"></td>`;
+                            rowHtml += `<td><input type="text" data-answer="${cellValue}" class="answer-input"></td>`;
                             break;
                         case 'group':
-                            rowHtml += `<td class="group-col" style="text-align: center; font-style: italic; color: #888;">${item[col.key]}</td>`;
+                            rowHtml += `<td class="group-col" style="text-align: center; font-style: italic; color: #888;">${cellValue}</td>`;
                             break;
                         case 'control':
                             rowHtml += `<td class="kontroll-col"><div style="display: flex; gap: 5px; justify-content: center;"><button class="row-check-btn" onclick="engine.checkRow(this)">OK</button><button class="row-show-btn" onclick="engine.showRow(this)">Visa</button></div></td>`;
                             break;
                         case 'translation':
-                            rowHtml += `<td style="text-align: left;"><span class="translation-text">${item[col.key]}</span></td>`;
+                            // Principle: Translation is language-aware
+                            const transValue = item[transKey] || item['Data 1'];
+                            rowHtml += `<td style="text-align: left;"><span class="translation-text">${transValue}</span></td>`;
                             break;
                     }
                 });
@@ -131,7 +149,6 @@ const engine = {
             });
         });
 
-        // Ensure visibility logic applies to selection mode too
         const groupCells = document.querySelectorAll('.group-col');
         groupCells.forEach(cell => cell.style.display = this.showGroup ? '' : 'none');
 
@@ -139,7 +156,6 @@ const engine = {
         this.updateUI();
     },
 
-    // Logic & Helpers
     shuffleData: function(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -201,23 +217,16 @@ const engine = {
         if (!tools) {
             tools = document.createElement('div');
             tools.id = 'selection-tools';
-            tools.style.display = 'inline-block';
-            tools.style.marginLeft = '10px';
-
-            const canShowGroup = this.config.showGroup !== false;
+            tools.classList.add('selection-tools-container');
 
             tools.innerHTML = `
                 <button id="select-all-btn" onclick="engine.toggleSelectAll()" style="background-color: #6c757d; color: white; margin-right: 5px;">Välj alla</button>
-                ${canShowGroup ? '<button onclick="engine.toggleGroupVisibility()" style="background-color: #6c757d; color: white;">Visa/Dölj grupp</button>' : ''}
+                <button onclick="engine.toggleGroupVisibility()" style="background-color: #6c757d; color: white;">Visa/Dölj grupp</button>
             `;
             const leftContainer = document.querySelector('.left-actions');
             if(leftContainer) leftContainer.appendChild(tools);
         } else { 
             tools.style.display = 'inline-block'; 
-            const groupBtn = tools.querySelector('button[onclick="engine.toggleGroupVisibility()"]');
-            if (groupBtn) {
-                groupBtn.style.display = this.config.showGroup === false ? 'none' : 'inline-block';
-            }
         }
         this.renderTable();
     },
@@ -237,12 +246,6 @@ const engine = {
         
         const tools = document.getElementById('selection-tools');
         if (tools) tools.style.display = 'none';
-
-        const filterControls = document.querySelector('.filter-controls');
-        const leftActions = document.querySelector('.left-actions');
-        if(filterControls && leftActions) {
-            leftActions.appendChild(filterControls);
-        }
 
         this.renderTable();
     },
@@ -269,7 +272,7 @@ const engine = {
         const end = Math.min(this.currentIndex + this.itemsPerPage, totalActive);
 
         if (nextBtn) {
-            nextBtn.parentElement.style.display = this.selectionMode ? "none" : "flex";
+            nextBtn.parentElement.style.display = (this.selectionMode || totalActive === 0) ? "none" : "flex";
             nextBtn.innerText = `Nästa (${end} / ${totalActive})`;
             nextBtn.style.opacity = (end >= totalActive) ? "0.5" : "1";
             nextBtn.style.pointerEvents = (end >= totalActive) ? "none" : "auto";

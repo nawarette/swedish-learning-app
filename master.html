@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Min Svenska Övning</title>
+    <title>Svenska Övning - Master Portal</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,7 @@
         <h1>
             <a href="index.html" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px;">
                 <img src="global/style/images/NK_Avatar.png" alt="Logo" class="header-logo">
-                Min Svenska Övning 🇸🇪
+                Grammatik Portal 🇸🇪
             </a>
         </h1>
 
@@ -41,24 +41,82 @@
         <main class="content">
             <section class="practice-area">
                 <div class="section-header">
-                    <h2 id="dynamic-title">Välkommen!</h2>
+                    <h2 id="dynamic-title">Laddar övning...</h2>
+                    <a id="back-button" href="javascript:void(0);" onclick="history.back()" class="back-btn">⬅ Tillbaka</a>
                 </div>
 
                 <div id="loading-indicator" style="text-align: center; padding: 50px;">
-                    Laddar portalen...
+                    Söker i Google Sheets...
                 </div>
 
                 <div id="dynamic-content"></div>
+
+                <div id="table-view" style="display: none;">
+                    <div class="top-controls">
+                        <div class="left-actions">
+                            <button id="restart-btn" onclick="engine.clearAll()">🔄 Slumpa om</button>
+                            <div class="filter-controls">
+                                <button id="save-filter-btn" onclick="engine.saveSelection()" style="display:none;">Spara</button>
+                                <button id="cancel-filter-btn" onclick="location.reload()" style="display:none;">Avbryt</button>
+                            </div>
+                        </div>
+                        <div class="right-actions">
+                            <button id="filter-btn" onclick="engine.enterSelectionMode()">⚙️ Setting</button>
+                        </div>
+                    </div>
+                    
+                    <table class="practice-table">
+                        <thead>
+                            <tr id="table-headers"></tr>
+                        </thead>
+                        <tbody id="practice-rows"></tbody>
+                    </table>
+                </div>
+
+                <div id="cloze-view" style="display: none;">
+                    <div class="top-controls">
+                        <div class="left-actions">
+                            <button onclick="clozeEngine.clearAll()">🔄 Slumpa om</button>
+                        </div>
+                        <div class="right-actions">
+                            <button onclick="clozeEngine.enterSelectionMode()">⚙️ Setting</button>
+                        </div>
+                    </div>
+                    <div id="exercise-container" class="exercise-container"></div>
+                </div>
+
+                <div id="pagination" class="controls" style="display: none; gap: 10px; margin-top: 20px;">
+                    <button id="prev-set-btn" onclick="engine.loadPreviousSet ? engine.loadPreviousSet() : clozeEngine.loadPreviousSet()">⬅ Föregående</button>
+                    <button id="next-set-btn" onclick="engine.loadNextSet ? engine.loadNextSet() : clozeEngine.loadNextSet()">Nästa</button>
+                </div>
             </section>
         </main>
     </div>
 
+    <script src="global/engine/table_engine.js"></script>
+    <script src="global/engine/cloze_engine.js"></script>
     <script src="global/engine/dashboard_engine.js"></script>
 
     <script>
         // --- SECURE OBFUSCATED ROUTING ---
         const _idMap = {
-            'other': 'AKfycbxXh_MXiFgt695vfhAHkbMMIbM4wdPI9jF1mmtH2u1JvJbmRVK1fCUk7DuMkjhscjNJ'
+            'other': 'AKfycbxXh_MXiFgt695vfhAHkbMMIbM4wdPI9jF1mmtH2u1JvJbmRVK1fCUk7DuMkjhscjNJ',
+            'gmmr':  'AKfycb_YOUR_GRAMMAR_ID_HERE',
+            'dict':  'AKfycb_YOUR_DICTATION_ID_HERE'
+        };
+
+        const table_Config = {
+            primaryKey: 'singularOb',
+            columns: [
+                { key: 'article',    type: 'input_hint', placeholder: 'en/ett/-' },
+                { key: 'singularOb', type: 'hint' },
+                { key: 'singularBe', type: 'input' },
+                { key: 'pluralOb',   type: 'input' },
+                { key: 'pluralBe',   type: 'input' },
+                { key: 'group',      type: 'group' },
+                { key: null,         type: 'control' },
+                { key: 'translation',type: 'translation' }
+            ]
         };
 
         function toggleLangDropdown() {
@@ -68,11 +126,10 @@
         function changeLanguage(langCode, flag) {
             localStorage.setItem('userPreferredLang', langCode);
             localStorage.setItem('userPreferredFlag', flag);
-            location.reload();
+            location.reload(); 
         }
 
         function initLanguageUI() {
-            // Updated to default to SV
             const savedLang = localStorage.getItem('userPreferredLang') || 'sv';
             const savedFlag = localStorage.getItem('userPreferredFlag') || '🇸🇪';
             document.getElementById('current-lang-code').innerText = savedLang.toUpperCase();
@@ -85,37 +142,51 @@
                 const text = await response.text();
                 const sidebarUl = document.getElementById('shared-sidebar');
                 sidebarUl.innerHTML = text;
-                
-                if (window.location.pathname.endsWith('index.html') || window.location.pathname === '/') {
-                    const homeLink = sidebarUl.querySelector('[data-nav="home"]');
-                    if (homeLink) homeLink.classList.add('active');
+                const params = new URLSearchParams(window.location.search);
+                const category = params.get('category'); 
+                if (category) {
+                    const activeLink = sidebarUl.querySelector(`[data-nav$="${category}"]`);
+                    if (activeLink) activeLink.classList.add('active');
                 }
             } catch (error) { console.error("Sidebar Failed:", error); }
         }
 
         async function initMasterApp() {
-            initLanguageUI();
+            initLanguageUI(); 
             await loadSidebar();
 
+            const params = new URLSearchParams(window.location.search);
+            
+            // --- FIX 1: Align default category with GS tab name "other_index"
+            let category = params.get('category') || 'other_index';
+            if (category === 'index') category = 'other_index'; // Safety bridge
+
+            const type     = params.get('type')     || 'dashboard';
+            const level    = params.get('level')    || 'a1a2';
+            const theme    = params.get('theme')    || 'All';
             const userLang = localStorage.getItem('userPreferredLang') || 'sv';
+
+            // --- FIX 2: Correct routing prefix logic
+            const prefix = category.split('_')[0]; 
+            const targetId = _idMap[prefix] || _idMap['other'];
+            const ACTIVE_DB_URL = `https://script.google.com/macros/s/${targetId}/exec`;
+
+            // --- FIX 3: Dynamic Tab Name Construction
+            const sheetName = (prefix === 'gmmr' || prefix === 'dict') 
+                ? `${category}_${level}_${theme}` 
+                : category;
+
             const loadingIndicator = document.getElementById('loading-indicator');
             const dynamicContent = document.getElementById('dynamic-content');
             
-            // --- CONSTRUCT URL ---
-            const targetId = _idMap['other'];
-            const ACTIVE_DB_URL = `https://script.google.com/macros/s/${targetId}/exec`;
-            const sheetName = 'other_index'; // Points specifically to your new tab name
-
             try {
-                console.log("Fetching Homepage from:", ACTIVE_DB_URL, "sheet:", sheetName);
+                // Testing output for debugging
+                console.log("Fetching from:", ACTIVE_DB_URL, "for sheet:", sheetName);
 
                 const response = await fetch(`${ACTIVE_DB_URL}?sheet=${sheetName}`);
                 const data = await response.json();
 
-                if (!Array.isArray(data)) throw new Error("Kunde inte ladda index-data.");
-
-                loadingIndicator.style.display = 'none';
-                dynamicContent.innerHTML = '';
+                if (!Array.isArray(data)) throw new Error(`Fliken hittades inte: ${sheetName}`);
 
                 let dashboardRows = [];
                 let collectingDashboard = false;
@@ -153,6 +224,9 @@
                     if (typeAttr === 'meta') {
                         if (keyAttr === 'pageTitle') document.title = row['Data 1'];
                         if (keyAttr === 'pageHeader') document.getElementById('dynamic-title').innerText = row['Data 1'];
+                        if (keyAttr === 'showBackBtn') {
+                            document.getElementById('back-button').style.display = (row['Data 1'].toString().toUpperCase() === 'TRUE') ? 'block' : 'none';
+                        }
                         return;
                     }
 
@@ -161,18 +235,40 @@
                         p.className = 'intro-text-block';
                         p.innerText = contentText;
                         dynamicContent.appendChild(p);
+                        return;
                     }
                     if (typeAttr === 'image') {
                         const img = document.createElement('img');
                         img.src = row['Data 1'];
                         img.className = 'content-image-centered';
                         dynamicContent.appendChild(img);
+                        return;
                     }
                 });
 
+                let filteredData = data.filter(item => item.Type === 'row' || item.Type === 'data');
+                loadingIndicator.style.display = 'none';
+
+                if (filteredData.length > 0) {
+                    document.getElementById('pagination').style.display = 'flex';
+                    if (type === 'table') {
+                        document.getElementById('table-view').style.display = 'block';
+                        renderTableHeaders();
+                        engine.init(filteredData, table_Config);
+                    } else {
+                        document.getElementById('cloze-view').style.display = 'block';
+                        clozeEngine.init(filteredData);
+                    }
+                }
             } catch (err) {
                 loadingIndicator.innerHTML = `<span style="color:red"><b>Handshake Failed:</b> ${err.message}</span>`;
             }
+        }
+
+        function renderTableHeaders() {
+            const headerRow = document.getElementById('table-headers');
+            const labels = ["Artikel", "Singular (Ob)", "Singular (Be)", "Plural (Ob)", "Plural (Be)", "Grupp", "Kontroll", "Översättning"];
+            headerRow.innerHTML = labels.map(l => `<th>${l}</th>`).join('');
         }
 
         window.onclick = function(event) {
